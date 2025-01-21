@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: file:///apps
-    targetRevision: HEAD
-    path: db/overlays/dev
+    repoURL: https://github.com/Geniekort/k8s-envs-prototype.git
+    targetRevision: main
+    path: apps/db/overlays/dev
   destination:
     server: https://kubernetes.default.svc
     namespace: dev

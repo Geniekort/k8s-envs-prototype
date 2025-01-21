@@ -88,14 +88,17 @@ The script will:
 ### Cluster Management
 
 ```bash
+# Create the dev cluster
+./scripts/create-dev-cluster.sh
+
+# Delete the dev cluster
+./scripts/delete-dev-cluster.sh
+
 # Switch between clusters
 minikube profile dev
 
-# Stop the cluster
+# Stop the cluster (without deleting)
 minikube stop -p dev
-
-# Delete the cluster
-minikube delete -p dev
 ```
 
 ## Project Structure

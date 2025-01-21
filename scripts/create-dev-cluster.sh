@@ -52,10 +52,7 @@ start_minikube() {
         --disk-size 20g \
         --driver docker \
         --addons ingress \
-        --addons metrics-server \
-        --mount \
-        --mount-string="${PROJECT_ROOT}/apps:/apps" \
-        --mount-string="${PROJECT_ROOT}/argocd:/argocd"
+        --addons metrics-server
     
     success "Minikube dev cluster started"
 }
@@ -72,9 +69,6 @@ install_argocd() {
     
     # Wait for ArgoCD server to be ready
     kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
-    
-    # Configure ArgoCD to allow local file access
-    kubectl patch configmap/argocd-cm -n argocd --type merge -p '{"data":{"timeout.reconciliation":"20s"}}'
     
     success "ArgoCD installed"
 }

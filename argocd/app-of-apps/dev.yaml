@@ -8,9 +8,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: file:///argocd
-    targetRevision: HEAD
-    path: apps/dev
+    repoURL: https://github.com/Geniekort/k8s-envs-prototype.git
+    targetRevision: main
+    path: argocd/apps/dev
     directory:
       recurse: true
   destination:
