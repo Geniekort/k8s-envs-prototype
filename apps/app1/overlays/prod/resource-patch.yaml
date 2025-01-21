@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app2
+  name: app1
 spec:
   template:
     spec:
       replicas: 3
       containers:
-      - name: app2
+      - name: app1
         resources:
           requests:
             cpu: 50m
@@ -16,7 +16,7 @@ spec:
             cpu: 100m
             memory: 128Mi
         volumeMounts:
-        - name: app2-index
+        - name: app1-index
           mountPath: /usr/share/nginx/html
         - name: nginx-config
           mountPath: /etc/nginx/conf.d
