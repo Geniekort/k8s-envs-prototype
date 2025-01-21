@@ -15,10 +15,5 @@ configMapGenerator:
 patches:
   - path: resource-patch.yaml
 
-# Add environment label only to metadata, not to selector
-commonAnnotations:
+commonLabels:
   environment: prod
-
-labels:
-  - pairs:
-      environment: prod 
