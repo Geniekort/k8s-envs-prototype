@@ -33,10 +33,10 @@ check_prerequisites() {
         exit 1
     fi
     
-    if ! command -v kustomize &> /dev/null; then
-        echo "❌ kustomize is not installed. Please install it first."
-        exit 1
-    fi
+    # if ! command -v kustomize &> /dev/null; then
+    #     echo "❌ kustomize is not installed. Please install it first."
+    #     exit 1
+    # fi
     
     success "Prerequisites checked"
 }
@@ -57,26 +57,31 @@ start_minikube() {
     success "Minikube dev cluster started"
 }
 
-# Bootstrap ArgoCD
-bootstrap_argocd() {
-    step "Bootstrapping ArgoCD..."
+# Install ArgoCD
+install_argocd() {
+    step "Installing ArgoCD..."
     
-    # Apply CRDs first
-    kubectl apply -k https://github.com/argoproj/argo-cd/manifests/crds\?ref\=stable
+    # Create namespace
+    kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
     
-    # Wait for CRDs to be ready
-    kubectl wait --for condition=established --timeout=60s crd/applications.argoproj.io
-    kubectl wait --for condition=established --timeout=60s crd/applicationsets.argoproj.io
-    kubectl wait --for condition=established --timeout=60s crd/appprojects.argoproj.io
-    
-    # Apply bootstrap manifests
-    kubectl apply -f "${PROJECT_ROOT}/argocd/bootstrap/install.yaml"
+    # Install ArgoCD
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
     
     # Wait for ArgoCD server to be ready
-    step "Waiting for ArgoCD to be ready..."
+    step "Waiting for ArgoCD server to be ready..."
     kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
     
-    success "ArgoCD bootstrapped"
+    success "ArgoCD installed"
+}
+
+# Setup GitOps
+setup_gitops() {
+    step "Setting up GitOps..."
+    
+    # Apply the bootstrap app
+    kubectl apply -f "${PROJECT_ROOT}/argocd/bootstrap/bootstrap.yaml"
+    
+    success "GitOps setup completed"
 }
 
 # Main execution
@@ -85,7 +90,8 @@ main() {
     
     check_prerequisites
     start_minikube
-    bootstrap_argocd
+    install_argocd
+    setup_gitops
     
     echo -e "\n${GREEN}✓ Dev cluster setup completed!${NC}"
     echo -e "\nUseful commands:"
