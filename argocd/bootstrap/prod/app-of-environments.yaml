@@ -1,17 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: bootstrap
+  name: prod-app-of-apps
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/Geniekort/k8s-envs-prototype.git
     targetRevision: main
-    path: argocd/bootstrap
-    directory:
-      recurse: true
-      exclude: bootstrap.yaml
+    path: argocd/apps/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -21,4 +18,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - PruneLast=true 
+      - PruneLast=true

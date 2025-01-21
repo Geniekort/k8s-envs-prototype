@@ -1,16 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: environments
+  name: dev-app-of-apps
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/Geniekort/k8s-envs-prototype.git
     targetRevision: main
-    path: argocd/environments
-    directory:
-      recurse: true
+    path: argocd/apps/dev
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
