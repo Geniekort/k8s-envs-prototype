@@ -11,12 +11,12 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Print step description
 step() {
-    echo -e "${BLUE}➡️  $1${NC}"
+    echo -e "${BLUE}→ $1${NC}"
 }
 
 # Print success message
 success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}✓ $1${NC}"
 }
 
 # Check prerequisites
@@ -33,8 +33,8 @@ check_prerequisites() {
         exit 1
     fi
     
-    if ! command -v argocd &> /dev/null; then
-        echo "❌ argocd CLI is not installed. Please install it first."
+    if ! command -v kustomize &> /dev/null; then
+        echo "❌ kustomize is not installed. Please install it first."
         exit 1
     fi
     
@@ -57,69 +57,37 @@ start_minikube() {
     success "Minikube dev cluster started"
 }
 
-# Install ArgoCD
-install_argocd() {
-    step "Installing ArgoCD..."
+# Bootstrap ArgoCD
+bootstrap_argocd() {
+    step "Bootstrapping ArgoCD..."
     
-    # Create argocd namespace
-    kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+    # Apply CRDs first
+    kubectl apply -k https://github.com/argoproj/argo-cd/manifests/crds\?ref\=stable
     
-    # Install ArgoCD
-    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    # Wait for CRDs to be ready
+    kubectl wait --for condition=established --timeout=60s crd/applications.argoproj.io
+    kubectl wait --for condition=established --timeout=60s crd/applicationsets.argoproj.io
+    kubectl wait --for condition=established --timeout=60s crd/appprojects.argoproj.io
+    
+    # Apply bootstrap manifests
+    kubectl apply -f "${PROJECT_ROOT}/argocd/bootstrap/install.yaml"
     
     # Wait for ArgoCD server to be ready
+    step "Waiting for ArgoCD to be ready..."
     kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=300s
     
-    success "ArgoCD installed"
-}
-
-# Create dev namespace and set up environment
-setup_dev_environment() {
-    step "Setting up dev environment..."
-    
-    # Create dev namespace
-    kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
-    
-    success "Dev environment set up"
-}
-
-# Configure ArgoCD and deploy applications
-deploy_applications() {
-    step "Deploying applications via ArgoCD..."
-    
-    # Get ArgoCD admin password
-    ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-    
-    # Port forward ArgoCD server (in background)
-    kubectl port-forward svc/argocd-server -n argocd 8080:443 &
-    PORT_FORWARD_PID=$!
-    
-    # Wait for port-forward to be ready
-    sleep 5
-    
-    # Login to ArgoCD
-    argocd login localhost:8080 --username admin --password $ARGOCD_PASSWORD --insecure
-    
-    # Create dev applications
-    kubectl apply -f "${PROJECT_ROOT}/argocd/app-of-apps/dev.yaml"
-    
-    # Kill port-forward
-    kill $PORT_FORWARD_PID
-    
-    success "Applications deployed"
+    success "ArgoCD bootstrapped"
 }
 
 # Main execution
 main() {
-    echo "🚀 Starting dev cluster setup..."
+    echo "Starting dev cluster setup..."
     
     check_prerequisites
     start_minikube
-    install_argocd
-    setup_dev_environment
-    deploy_applications
+    bootstrap_argocd
     
-    echo -e "\n${GREEN}🎉 Dev cluster setup completed!${NC}"
+    echo -e "\n${GREEN}✓ Dev cluster setup completed!${NC}"
     echo -e "\nUseful commands:"
     echo "- Switch to dev cluster:        minikube profile dev"
     echo "- Access ArgoCD UI:            kubectl port-forward svc/argocd-server -n argocd 8080:443"
