@@ -3,18 +3,18 @@ kind: Deployment
 metadata:
   name: app2
 spec:
+  replicas: 3
   template:
     spec:
-      replicas: 2
       containers:
-      - name: app2
+      - name: nginx
         resources:
           requests:
-            cpu: 50m
-            memory: 64Mi
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            cpu: 100m
-            memory: 128Mi
+            memory: "256Mi"
+            cpu: "200m"
         volumeMounts:
         - name: app2-index
           mountPath: /usr/share/nginx/html
@@ -26,4 +26,4 @@ spec:
           name: app2-index
       - name: nginx-config
         configMap:
-          name: app2-nginx-config 
+          name: app2-nginx-config

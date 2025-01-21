@@ -15,5 +15,6 @@ configMapGenerator:
 patches:
   - path: resource-patch.yaml
 
-commonLabels:
-  environment: prod 
+labels:
+  - pairs:
+      environment: prod 
