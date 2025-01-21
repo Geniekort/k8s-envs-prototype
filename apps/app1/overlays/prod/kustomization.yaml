@@ -8,7 +8,7 @@ resources:
   - nginx-config.yaml
 
 configMapGenerator:
-  - name: app2-index
+  - name: app1-index
     files:
       - index.html
 

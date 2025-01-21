@@ -21,9 +21,9 @@ spec:
         - name: nginx-config
           mountPath: /etc/nginx/conf.d
       volumes:
-      - name: app2-index
+      - name: app1-index
         configMap:
-          name: app2-index
+          name: app1-index
       - name: nginx-config
         configMap:
-          name: app2-nginx-config 
+          name: app1-nginx-config 
