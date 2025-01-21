@@ -62,8 +62,8 @@ check_prerequisites() {
         error "kubectl is required but not installed"
     fi
     
-    if [[ "$ENV" == "dev" ]] && ! command -v minikube &> /dev/null; then
-        error "minikube is required for dev environment but not installed"
+    if ! command -v minikube &> /dev/null; then
+        error "minikube is required but not installed"
     fi
     
     success "Prerequisites checked"
@@ -71,22 +71,16 @@ check_prerequisites() {
 
 # Start cluster
 start_cluster() {
-    if [[ "$ENV" == "dev" ]]; then
-        step "Starting Minikube dev cluster..."
-        minikube start \
-            --profile dev \
-            --cpus 2 \
-            --memory 4096 \
-            --disk-size 20g \
-            --driver docker \
-            --addons ingress \
-            --addons metrics-server
-        success "Minikube dev cluster started"
-    else
-        step "Using existing production cluster..."
-        # Add any production cluster-specific setup here
-        success "Production cluster ready"
-    fi
+    step "Starting Minikube $ENV cluster..."
+    minikube start \
+        --profile $ENV \
+        --cpus 2 \
+        --memory 4096 \
+        --disk-size 20g \
+        --driver docker \
+        --addons ingress \
+        --addons metrics-server
+    success "Minikube $ENV cluster started"
 }
 
 # Install ArgoCD
@@ -141,12 +135,9 @@ main() {
     
     echo -e "\n${GREEN}✓ $ENV cluster setup completed!${NC}"
     echo -e "\nUseful commands:"
-    echo "- Access ArgoCD UI:            kubectl port-forward svc/argocd-server -n argocd 8080:443"
-    echo "- Get ArgoCD admin password:    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d"
-    
-    if [[ "$ENV" == "dev" ]]; then
-        echo "- Switch to dev cluster:        minikube profile dev"
-    fi
+    echo "- Switch to $ENV cluster:     minikube profile $ENV"
+    echo "- Access ArgoCD UI:           kubectl port-forward svc/argocd-server -n argocd 8080:443"
+    echo "- Get ArgoCD admin password:  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d"
 }
 
 main 
