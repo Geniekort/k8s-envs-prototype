@@ -3,41 +3,27 @@ kind: Deployment
 metadata:
   name: app2
 spec:
-  replicas: 3  # More replicas for production
   template:
     spec:
+      replicas: 2
       containers:
-      - name: nginx
+      - name: app2
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            cpu: 50m
+            memory: 64Mi
           limits:
-            memory: "256Mi"
-            cpu: "200m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: app2
-spec:
-  type: ClusterIP  # Using ClusterIP for production as we'll likely have an ingress
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: app2
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-  - host: app2.prod.example.com  # Production domain
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: app2
-            port:
-              number: 80 
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: app2-index
+          mountPath: /usr/share/nginx/html
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: app2-index
+        configMap:
+          name: app2-index
+      - name: nginx-config
+        configMap:
+          name: app2-nginx-config 
