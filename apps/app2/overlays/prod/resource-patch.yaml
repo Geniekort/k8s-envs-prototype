@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-      - name: nginx
+      - name: app2
         resources:
           requests:
             memory: "128Mi"
