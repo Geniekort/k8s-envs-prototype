@@ -4,17 +4,16 @@ kind: Kustomization
 namespace: prod
 
 resources:
-- ../../base
-
-patchesStrategicMerge:
-- resource-patch.yaml
+  - ../../base
+  - nginx-config.yaml
 
 configMapGenerator:
-- name: nginx-config
-  behavior: create
-  files:
-  - nginx-config.yaml
-- name: app-content
-  behavior: create
-  files:
-  - index.html 
+  - name: app2-index
+    files:
+      - index.html
+
+patches:
+  - path: resource-patch.yaml
+
+commonLabels:
+  environment: prod 
