@@ -1,215 +1,141 @@
-# Infrastructure Prototype: Multi-Environment Kubernetes Deployment
+# Infrastructure Prototype
 
-This prototype demonstrates a GitOps-based multi-environment deployment setup using ArgoCD, Kustomize, and Kubernetes. It showcases a scalable approach for managing multiple applications across different environments with automated deployments.
-
-## Features
-
-- **Multi-Environment Support**
-  - Development environment for continuous integration
-  - Production environment for live deployments
-  - Dynamic Preview environments for feature branches/PRs
-- **GitOps-based Workflow**
-  - ArgoCD for automated deployments
-  - App of Apps pattern for managing multiple services
-  - Kustomize for environment-specific configurations
-- **Application Components**
-  - Two sample applications (app1, app2)
-  - Shared database service
-  - Environment-specific configurations
-- **Preview Environment Automation**
-  - Dynamic namespace creation
-  - Unique URLs per environment
-  - Automatic cleanup
-
-## Prerequisites
-
-- Minikube v1.32.0 or higher
-- kubectl v1.28.0 or higher
-- ArgoCD CLI v2.9.0 or higher
-- Kustomize v5.3.0 or higher
-- Docker (for running Minikube)
-
-## Cluster Setup
-
-### Development Cluster
-
-1. Make the setup script executable:
-   ```bash
-   chmod +x scripts/create-dev-cluster.sh
-   ```
-
-2. Run the setup script:
-   ```bash
-   ./scripts/create-dev-cluster.sh
-   ```
-
-The script will:
-- Start a Minikube cluster with the 'dev' profile
-- Install and configure ArgoCD
-- Create necessary namespaces
-- Deploy all applications via ArgoCD
-
-### Accessing the Development Environment
-
-1. **ArgoCD Dashboard**:
-   ```bash
-   kubectl port-forward svc/argocd-server -n argocd 8080:443
-   ```
-   Access at: https://localhost:8080
-   
-   Get the admin password:
-   ```bash
-   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-   ```
-
-2. **Applications**:
-   ```bash
-   # Access app1
-   kubectl port-forward svc/app1 -n dev 8081:80
-   # Visit: http://localhost:8081
-
-   # Access app2
-   kubectl port-forward svc/app2 -n dev 8082:80
-   # Visit: http://localhost:8082
-   ```
-
-3. **Database**:
-   ```bash
-   # Port-forward PostgreSQL
-   kubectl port-forward svc/db -n dev 5432:5432
-   ```
-   Connection details:
-   - Host: localhost
-   - Port: 5432
-   - Database: app_dev
-   - User: app_dev
-   - Password: devpassword
-
-### Cluster Management
-
-```bash
-# Create the dev cluster
-./scripts/create-dev-cluster.sh
-
-# Delete the dev cluster
-./scripts/delete-dev-cluster.sh
-
-# Switch between clusters
-minikube profile dev
-
-# Stop the cluster (without deleting)
-minikube stop -p dev
-```
+This repository contains a GitOps-based infrastructure setup using ArgoCD for both development and production environments.
 
 ## Project Structure
 
 ```
 .
-├── apps/                      # Application manifests
-│   ├── app1/
-│   │   ├── base/             # Base Kubernetes manifests
-│   │   └── overlays/         # Environment-specific patches
-│   │       ├── dev/
-│   │       ├── prod/
-│   │       └── preview/
-│   ├── app2/
-│   │   ├── base/
-│   │   └── overlays/
-│   └── db/
-│       ├── base/
-│       └── overlays/
-├── argocd/                    # ArgoCD configurations
-│   ├── apps/                 # Individual app definitions
-│   │   ├── dev/
-│   │   ├── prod/
-│   │   └── preview/
-│   └── app-of-apps/          # Root application definitions
-└── scripts/                   # Utility scripts
+├── apps/                          # Application definitions
+│   ├── app1/                     # First application
+│   │   ├── base/                # Base Kubernetes manifests
+│   │   │   ├── deployment.yaml
+│   │   │   ├── service.yaml
+│   │   │   └── kustomization.yaml
+│   │   └── overlays/            # Environment-specific overlays
+│   │       ├── dev/            # Development environment
+│   │       │   ├── index.html
+│   │       │   ├── nginx-config.yaml
+│   │       │   ├── resource-patch.yaml
+│   │       │   └── kustomization.yaml
+│   │       └── prod/           # Production environment
+│   │           ├── index.html
+│   │           ├── nginx-config.yaml
+│   │           ├── resource-patch.yaml
+│   │           └── kustomization.yaml
+│   └── app2/                     # Second application (same structure as app1)
+├── argocd/                        # ArgoCD configuration
+│   ├── bootstrap/               # Bootstrap applications
+│   │   ├── dev/               # Development bootstrap
+│   │   │   ├── bootstrap.yaml  # Bootstrap Application pointing to dev apps
+│   │   │   └── install.yaml    # ArgoCD installation manifest
+│   │   │   └── app-of-apps.yaml # App of Apps manifest, points to dev apps in /argocd/apps/dev
+│   │   └── prod/              # Production bootstrap
+│   │       ├── bootstrap.yaml  # Bootstrap Application pointing to prod apps
+│   │       └── install.yaml    # ArgoCD installation manifest
+│   │       └── app-of-apps.yaml # App of Apps manifest, points to prod apps in /argocd/apps/prod
+│   └── apps/                   # ArgoCD Application definitions
+│       ├── dev/              # Development applications
+│       │   ├── app1.yaml     # Points to app1/overlays/dev
+│       │   └── app2.yaml     # Points to app2/overlays/dev
+│       └── prod/             # Production applications
+│           ├── app1.yaml     # Points to app1/overlays/prod
+│           └── app2.yaml     # Points to app2/overlays/prod
+└── scripts/                       # Utility scripts
+    ├── create-cluster.sh        # Cluster creation script
+    ├── delete-cluster.sh        # Cluster deletion script
+    └── port-forward.sh         # Port forwarding utility
 ```
 
-## Environment Details
+## ArgoCD Bootstrap Process
 
-### Development (dev)
-- **Purpose**: Continuous integration and testing
-- **Namespace**: `dev`
-- **URL Pattern**: `*.dev.local`
-- **Resource Limits**: Minimal for cost efficiency
-- **Cluster**: Minikube with 2 CPUs, 4GB RAM
+The setup uses a two-level GitOps approach:
 
-### Production (prod)
-- **Purpose**: Live production workloads
-- **Namespace**: `prod`
-- **URL Pattern**: `*.prod.local`
-- **Resource Limits**: Production-grade resources
-- **Cluster**: Separate Minikube instance (TODO)
+1. **Bootstrap Level** (`argocd/bootstrap/{env}/bootstrap.yaml`):
+   - Installed directly via kubectl during cluster creation
+   - Points to the environment-specific apps directory (`argocd/apps/{env}/`)
+   - Manages all Application resources for the environment
+   - Self-manages ArgoCD through the `install.yaml`
 
-### Preview
-- **Purpose**: Feature branch testing
-- **Namespace**: `preview-{branch-name}`
-- **URL Pattern**: `*.{branch-name}.preview.local`
-- **Resource Limits**: Similar to dev environment
-- **Lifecycle**: Automatically created/destroyed with PR lifecycle
+2. **Application Level** (`argocd/apps/{env}/*.yaml`):
+   - Managed by the bootstrap Application
+   - Each Application points to its respective overlay (`apps/{app}/overlays/{env}`)
+   - Automatically syncs when changes are made to the overlay
+   - Includes environment-specific configurations
 
-## Working with Preview Environments
+### Bootstrap Configuration Example
+```yaml
+# argocd/bootstrap/{env}/bootstrap.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bootstrap-{env}
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Geniekort/k8s-envs-prototype.git
+    targetRevision: main
+    path: argocd/apps/{env}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+```
 
-1. **Create Preview Environment**
+## Setup Instructions
+
+1. Create a cluster (dev or prod):
    ```bash
-   ./scripts/create-preview-env.sh feature-branch-name
+   ./scripts/create-cluster.sh --environment dev   # For development
+   # or
+   ./scripts/create-cluster.sh --environment prod  # For production
    ```
 
-2. **Access Preview Environment**
+2. Access services:
    ```bash
-   # Forward preview environment service
-   kubectl port-forward svc/app1 -n preview-feature-branch-name 8080:80
+   ./scripts/port-forward.sh
+   ```
+   This will show a menu to:
+   - Access ArgoCD UI
+   - Forward ports for applications
+   - Show service credentials
+
+3. Delete cluster:
+   ```bash
+   ./scripts/delete-cluster.sh --environment dev   # For development
+   # or
+   ./scripts/delete-cluster.sh --environment prod  # For production
    ```
 
-3. **Cleanup Preview Environment**
-   ```bash
-   ./scripts/cleanup-preview-env.sh feature-branch-name
-   ```
+## Environment Differences
 
-## Adding New Applications
+### Development
+- Uses Minikube with dev profile
+- Single replica per application
+- NodePort services for direct access
+- Lower resource limits
 
-1. Create application base configuration:
-   ```bash
-   mkdir -p apps/new-app/base
-   # Add deployment.yaml, service.yaml, etc.
-   ```
+### Production
+- Uses Minikube with prod profile
+- Multiple replicas for high availability
+- ClusterIP services
+- Higher resource limits and requests
 
-2. Create environment overlays:
-   ```bash
-   mkdir -p apps/new-app/overlays/{dev,prod,preview}
-   # Add environment-specific patches
-   ```
+## Applications
 
-3. Add ArgoCD application definition:
-   ```bash
-   # Add new-app.yaml to argocd/apps/{env}/
-   ```
+### App1 & App2
+- Simple nginx-based web applications
+- Environment-specific configurations
+- Resource limits and scaling based on environment
+- Configurable through overlays
 
-4. Update App of Apps configuration if needed
+## GitOps Workflow
 
-## Troubleshooting
-
-- **ArgoCD Sync Issues**
-  ```bash
-  argocd app get <app-name>
-  argocd app sync <app-name>
-  ```
-
-- **Preview Environment Issues**
-  ```bash
-  kubectl get all -n preview-{branch-name}
-  kubectl describe pod <pod-name> -n preview-{branch-name}
-  ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Make your changes
-4. Submit a pull request
-
-## License
-
-MIT License - See LICENSE file for details 
+1. ArgoCD is installed via bootstrap application
+2. Bootstrap application manages environment-specific applications
+3. Each application is deployed using Kustomize overlays
+4. Changes to the repository automatically sync to the cluster 
